@@ -9,8 +9,10 @@ and family.
 
 ![Global in Realistic Dark style, spinning once and settling](docs/demo.gif)
 
-<sub>One full *Spin, Then Settle* cycle in Realistic Dark, sped up 15×. On
-your desktop it takes about three minutes.</sub>
+![Global in Realistic Light style: the globe in front of a giant sun](docs/demo-light.gif)
+
+<sub>One full *Spin, Then Settle* cycle in Realistic Dark and Realistic Light,
+sped up 15×. On your desktop it takes about three minutes.</sub>
 
 ## Download
 
@@ -37,7 +39,7 @@ style, pause the animation, or open **Settings…**.
 
 <table>
   <tr>
-    <td><img src="docs/realistic-light.jpg" alt="Realistic Light: the globe in front of a giant sun"></td>
+    <td><img src="docs/silhouette-light.jpg" alt="Silhouette Light"></td>
     <td><img src="docs/dotMatrix-light.jpg" alt="Dot Matrix Light"></td>
   </tr>
 </table>
@@ -81,7 +83,7 @@ Requires a Swift 6.1 toolchain. Command Line Tools are enough
 scripts/run.sh               # build Global.app (release), then (re)launch it
 scripts/build-app.sh         # build only → build/Global.app
 scripts/package.sh           # universal build → build/Global.dmg
-scripts/make-demo.sh         # README animation → docs/demo.gif
+scripts/make-demo.sh         # README animations → docs/demo*.gif
 swift test                   # unit tests (Swift Testing)
 ```
 
