@@ -19,15 +19,27 @@ sped up 15×. On your desktop it takes about three minutes.</sub>
 **[Download Global for Mac](https://github.com/NE0NMIKE/global/releases/latest/download/Global.dmg)**
 (macOS 13 or later, Apple silicon or Intel)
 
+> [!WARNING]
+> **Global isn't approved by Apple, and you use it at your own risk.**
+> Apple charges developers a yearly fee to check and approve apps, and this
+> free project hasn't paid it. So macOS will warn that it can't check Global
+> for malware, and you'll need to allow it once (step 3 below). I haven't
+> reviewed all of the code myself, and I'm not liable for any damage or
+> problems it causes. If you'd rather check it first, all the source code
+> is here and you can [build it yourself](#build-from-source). See the
+> [disclaimer](#disclaimer).
+
 1. Open **Global.dmg** and drag **Global** onto the **Applications** folder.
 2. Open **Applications** and double-click **Global**.
-3. macOS will say it can't check Global for malware, because Global isn't
-   from the App Store. Click **Done**, then:
+3. macOS will say it can't check Global for malware. Click **Done** (not
+   *Move to Bin*), then:
    - open **System Settings › Privacy & Security**,
-   - scroll down to *"Global" was blocked*, click **Open Anyway**, and
-     enter your password.
+   - scroll down to *"Global" was blocked to protect your Mac*, click
+     **Open Anyway**, enter your password, then click **Open Anyway** again.
 
-   You only need to do this once.
+   You only need to do this once. The button only appears for about an hour
+   after you try to open the app; if it's gone, open Global again first.
+   On recent macOS versions, right-click › Open no longer skips this step.
 4. Type your name, your partner's name and their city, then click **Start**.
    Click **Allow** when macOS asks about Location, so Global can find your
    own city.
@@ -142,6 +154,14 @@ Tests/         Swift Testing unit tests
   (Blue Marble, Black Marble), public domain.
 - Coastlines and borders: [Natural Earth](https://www.naturalearthdata.com/),
   public domain.
+
+## Disclaimer
+
+Global is a free, personal project, provided as is, without warranty of
+any kind. It isn't notarised by Apple, and I haven't reviewed all of the
+code myself. You install and run it at your own risk. I'm not liable for
+any damage, data loss or other problems that come from using it. The
+[MIT licence](LICENSE) has the full terms.
 
 ## Contact
 
