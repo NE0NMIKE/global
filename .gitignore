@@ -1,0 +1,17 @@
+# SwiftPM / build output
+.build/
+build/
+.swiftpm/
+*.xcodeproj
+DerivedData/
+
+# Secrets
+*.env
+.env*
+
+# Editor and local scratch
+.vscode/
+previews/
+
+# macOS
+.DS_Store
