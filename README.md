@@ -7,7 +7,10 @@ you and your partner are, the arc between you, how far apart you are and
 the time for each of you. It's made for long-distance couples, friends
 and family.
 
-![Global in Realistic Dark style](docs/realistic-dark.jpg)
+![Global in Realistic Dark style, spinning once and settling](docs/demo.gif)
+
+<sub>One full *Spin, Then Settle* cycle in Realistic Dark, sped up 15×. On
+your desktop it takes about three minutes.</sub>
 
 ## Download
 
@@ -78,6 +81,7 @@ Requires a Swift 6.1 toolchain. Command Line Tools are enough
 scripts/run.sh               # build Global.app (release), then (re)launch it
 scripts/build-app.sh         # build only → build/Global.app
 scripts/package.sh           # universal build → build/Global.dmg
+scripts/make-demo.sh         # README animation → docs/demo.gif
 swift test                   # unit tests (Swift Testing)
 ```
 
@@ -136,6 +140,11 @@ Tests/         Swift Testing unit tests
   (Blue Marble, Black Marble), public domain.
 - Coastlines and borders: [Natural Earth](https://www.naturalearthdata.com/),
   public domain.
+
+## Contact
+
+Questions, ideas or bugs? [Open an issue](https://github.com/NE0NMIKE/global/issues)
+or email [312m.ye@gmail.com](mailto:312m.ye@gmail.com).
 
 ## Licence
 

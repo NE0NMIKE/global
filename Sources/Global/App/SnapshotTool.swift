@@ -7,10 +7,12 @@ import SceneKit
 ///   Global --snapshot <output-dir> [--size 1600x1000] [--style dotMatrix] [--light]
 ///
 /// Writes one PNG per style × appearance (or just the requested ones).
+/// With `--frames N [--span seconds] [--scale 1|2]` it writes N frames per
+/// style instead, covering one spin cycle by default (see `scripts/make-demo.sh`).
 enum SnapshotTool {
     static func run(arguments: [String]) -> Int32 {
         guard let i = arguments.firstIndex(of: "--snapshot"), i + 1 < arguments.count else {
-            print("usage: Global --snapshot <dir> [--size WxH] [--style name] [--light|--dark] [--daynight] [--tags] [--nopanel] [--time seconds]")
+            print("usage: Global --snapshot <dir> [--size WxH] [--style name] [--light|--dark] [--daynight] [--tags] [--nopanel] [--spin] [--time seconds] [--frames N [--span seconds] [--scale 1|2]]")
             return 2
         }
         let dir = URL(fileURLWithPath: arguments[i + 1])
@@ -45,7 +47,18 @@ enum SnapshotTool {
                 model.sinceDate = Calendar.current.date(from: DateComponents(year: 2026, month: 1, day: 1))
                 if arguments.contains("--spin") { model.motion = .spinSettle }
 
-                let name = "\(style.rawValue)-\(dark ? "dark" : "light").png"
+                let base = "\(style.rawValue)-\(dark ? "dark" : "light")"
+                if let n = value("--frames", arguments).flatMap(Int.init), n > 0 {
+                    let cycle = MotionController.spinDuration + MotionController.holdDuration
+                    let span = value("--span", arguments).flatMap(Double.init) ?? cycle
+                    let scale = value("--scale", arguments).flatMap(Double.init).map { CGFloat($0) } ?? 2
+                    let sub = dir.appendingPathComponent(base)
+                    try? FileManager.default.createDirectory(at: sub, withIntermediateDirectories: true)
+                    if !renderSequence(model: model, size: size, scale: scale, device: device,
+                                       count: n, span: span, to: sub) { print("failed \(base)") }
+                    continue
+                }
+                let name = "\(base).png"
                 let url = dir.appendingPathComponent(name)
                 if render(model: model, size: size, device: device, time: time, to: url) {
                     print("wrote \(url.path)")
@@ -133,52 +146,100 @@ enum SnapshotTool {
         return args[i + 1]
     }
 
-    /// Renders one frame the way `WallpaperView` composes it on screen:
-    /// static backdrop, the globe scene in its own rect, then the panel.
+    /// Renders one frame the way `WallpaperView` composes it on screen and
+    /// writes it as a PNG.
     private static func render(model: RenderModel, size: CGSize, device: MTLDevice,
                                time: TimeInterval, to url: URL) -> Bool {
-        let scale: CGFloat = 2
+        let frames = FrameRenderer(model: model, size: size, scale: 2, device: device)
+        let t = time > 0 ? time : Date().timeIntervalSinceReferenceDate
+        guard let image = frames.image(at: t, now: Date()) else { return false }
+        return write(image, to: url)
+    }
+
+    /// Writes `count` frames covering `span` seconds of motion, starting at
+    /// the beginning of a spin cycle (for README animations).
+    static func renderSequence(model: RenderModel, size: CGSize, scale: CGFloat, device: MTLDevice,
+                               count: Int, span: TimeInterval, to dir: URL) -> Bool {
+        let frames = FrameRenderer(model: model, size: size, scale: scale, device: device)
+        let cycle = MotionController.spinDuration + MotionController.holdDuration
+        let start = (cycle * 100_000).rounded()   // a whole number of cycles: phase 0
         let now = Date()
+        for i in 0..<count {
+            let t = start + span * Double(i) / Double(count)
+            guard let image = frames.image(at: t, now: now),
+                  write(image, to: dir.appendingPathComponent(String(format: "frame-%04d.png", i)))
+            else { return false }
+        }
+        print("wrote \(count) frames to \(dir.path)")
+        return true
+    }
+
+    private static func write(_ image: CGImage, to url: URL) -> Bool {
+        guard let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
+        else { return false }
+        return (try? png.write(to: url)) != nil
+    }
+}
+
+/// Composes frames the way `WallpaperView` does on screen: static backdrop,
+/// the globe scene in its own rect, then the panel. The scene, backdrop and
+/// panel are built once, so sequences only re-render the globe.
+private final class FrameRenderer {
+    private let model: RenderModel
+    private let size: CGSize
+    private let scale: CGFloat
+    private let layout: GlobeLayout
+    private let local: GlobeLayout
+    private let sceneRect: CGRect
+    private let showsPanel: Bool
+    private let globe = GlobeScene()
+    private let tags = TagNodes()
+    private let renderer: SCNRenderer
+    private let backdrop: CGImage?
+
+    init(model: RenderModel, size: CGSize, scale: CGFloat, device: MTLDevice) {
+        self.model = model
+        self.size = size
+        self.scale = scale
         let layout = GlobeLayout.compute(viewSize: size, globeScale: model.globeScale,
                                          showPanel: model.showInfoPanel)
         let showsPanel = layout.panelAnchor != nil
-        let showsTags = TagNodes.isNeeded(model: model, showsPanel: showsPanel)
-        let sceneRect = layout.sceneRect(withTags: showsTags)
-        let local = layout.local(in: sceneRect)
+        let sceneRect = layout.sceneRect(withTags: TagNodes.isNeeded(model: model, showsPanel: showsPanel))
+        self.layout = layout
+        self.showsPanel = showsPanel
+        self.sceneRect = sceneRect
+        local = layout.local(in: sceneRect)
 
-        let globe = GlobeScene()
         globe.device = device
         globe.apply(model)
         globe.applyLayout(local)
         let backdrop = WallpaperView.backdrop(layout: layout, theme: globe.theme, scale: scale)
+        self.backdrop = backdrop
         globe.scene.background.contents = backdrop.flatMap {
             WallpaperView.crop($0, to: sceneRect, viewSize: size, scale: scale)
         }
-
-        let renderer = SCNRenderer(device: device, options: nil)
-        renderer.scene = globe.scene
-        renderer.pointOfView = globe.cameraNode
-        let t = time > 0 ? time : now.timeIntervalSinceReferenceDate
-        globe.update(at: t, model: model)
-        let tags = TagNodes()
         tags.backingScale = scale
         globe.scene.rootNode.addChildNode(tags.root)
+
+        renderer = SCNRenderer(device: device, options: nil)
+        renderer.scene = globe.scene
+        renderer.pointOfView = globe.cameraNode
+    }
+
+    /// The composed frame with the globe at motion time `time`; clocks show `now`.
+    func image(at time: TimeInterval, now: Date) -> CGImage? {
+        globe.update(at: time, model: model)
         tags.update(globe: globe, layout: local, model: model, showsPanel: showsPanel, now: now)
         let scene = renderer.snapshot(atTime: 1, with: CGSize(width: sceneRect.width * scale,
                                                               height: sceneRect.height * scale),
                                       antialiasingMode: .multisampling4X)
-
-        let theme = globe.theme
         let panel = showsPanel
-            ? PanelRenderer.panel(InfoContent(model: model, now: now), theme: theme, width: layout.panelWidth, scale: scale)
+            ? PanelRenderer.panel(InfoContent(model: model, now: now), theme: globe.theme,
+                                  width: layout.panelWidth, scale: scale)
             : nil
-        guard let image = WallpaperComposer.compose(
-            viewSize: size, scale: scale,
-            backdrop: backdrop,
+        return WallpaperComposer.compose(
+            viewSize: size, scale: scale, backdrop: backdrop,
             scene: scene.cgImage(forProposedRect: nil, context: nil, hints: nil), sceneRect: sceneRect,
-            panel: panel?.image, panelRect: panel.flatMap { layout.panelRect(size: $0.size) }),
-            let png = NSBitmapImageRep(cgImage: image).representation(using: .png, properties: [:])
-        else { return false }
-        return (try? png.write(to: url)) != nil
+            panel: panel?.image, panelRect: panel.flatMap { layout.panelRect(size: $0.size) })
     }
 }
